@@ -1,4 +1,6 @@
 #include <iostream>
+#include <string>
+#include <vector>
 #include <bits/stdc++.h>
 
 using namespace std;
@@ -40,6 +42,15 @@ const unsigned int initP[] = {58,    50,   42,    34,    26,   18,    10,    2,
 							59,    51,   43,    35,    27,   19,    11,    3,
 							61,    53,   45,    37,    29,   21,    13,    5,
 							63,    55,   47,    39,    31,   23,    15,    7};
+// Expansion
+const unsigned int expR[] = {32,     1,    2,     3,     4,    5,
+							 4,     5,    6,     7,     8,    9,
+							 8,     9,   10,    11,    12,   13,
+							12,    13,   14,    15,    16,   17,
+							16,    17,   18,    19,    20,   21,
+							20,    21,   22,    23,    24,   25,
+							24,    25,   26,    27,    28,   29,
+							28,    29,   30,    31,    32,    1};
 // sizes
 const size_t BLOCK_SIZE = 64;
 
@@ -64,8 +75,8 @@ bitset <N1 + N2> concat( const bitset <N1> & b1, const bitset <N2> & b2 ) {
 }
 
 // Generate 16 round keys
-int keygen(const bitset<INIT_KEY_SIZE> initkey) {
-	bitset<SUB_KEY_SIZE> keyList[NUM_ROUNDS];
+vector<bitset<SUB_KEY_SIZE>> keygen(const bitset<INIT_KEY_SIZE> initkey) {
+	vector<bitset<SUB_KEY_SIZE>> keyList;
 
 	bitset<HALF_KEY_SIZE> c0;
 	bitset<HALF_KEY_SIZE> d0;
@@ -112,10 +123,10 @@ int keygen(const bitset<INIT_KEY_SIZE> initkey) {
 			p++;
 		}
 
-		keyList[i] = p2Key;
+		keyList.push_back(p2Key);
 	}
 
-	return 0;
+	return keyList;
 }
 
 // Initial Permutation
@@ -144,19 +155,39 @@ int initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset<BLOC
 	return 0;
 }
 
+// Round Function
+int roundFunction(const bitset<BLOCK_SIZE/2> r0) {
+	bitset<SUB_KEY_SIZE> eR;
+	int r = 0;
+
+	// Expand r0
+	for(int i=0; i<SUB_KEY_SIZE; i++) {
+		if(r0.test(reverseNum(BLOCK_SIZE/2, expR[i]) + 1)) {
+			eR.set(reverseNum(SUB_KEY_SIZE, r));
+		}
+		r++;
+	}
+}
 
 int main() {
 	bitset<64> testkey(string("0001001100110100010101110111100110011011101111001101111111110001"));
-	keygen(testkey);
+	vector<bitset<SUB_KEY_SIZE>> keyList = keygen(testkey);
 
 	// DES Operations
 	bitset<64> testMsg(string("0000000100100011010001010110011110001001101010111100110111101111"));
+
 	bitset<32> left;
 	bitset<32> right;
+	bitset<32> newLeft;
+	bitset<32> newRight;
+
 	// initial perm
 	initPerm(testMsg, &left, &right);
 
-	// 16 rounds
+	// 16 rounds of this block
+	newLeft = right;
+	newRight = roundFunction(right); //XOR left;
+
 	// final perm
 	
 }
@@ -187,4 +218,6 @@ int main() {
 IP
 L0 = 11001100000000001100110011111111 
 R0 = 11110000101010101111000010101010
+
+expanded R0 = 011110100001010101010101011110100001010101010101
 */
