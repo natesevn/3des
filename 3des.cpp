@@ -6,16 +6,16 @@ using namespace std;
 // Key Scheduling Constants
 // Permutation 1
 const unsigned int pc1[] = {57,   49,    41,   33,    25,    17,    9,
-							1,   58,    50,   42,    34,    26,   18,
+							 1,   58,    50,   42,    34,    26,   18,
 							10,    2,    59,   51,    43,    35,   27,
 							19,   11,     3,   60,    52,    44,   36,
 							63,   55,    47,   39,    31,    23,   15,
-							7,   62,    54,   46,    38,    30,   22,
+							 7,   62,    54,   46,    38,    30,   22,
 							14,    6,    61,   53,    45,    37,   29,
 							21,   13,     5,   28,    20,    12,    4};
 // Permutation 2
 const unsigned int pc2[] = {14,    17,   11,    24,     1,    5,
-							3,    28,   15,     6,    21,   10,
+							 3,    28,   15,     6,    21,   10,
 							23,    19,   12,     4,    26,    8,
 							16,     7,   27,    20,    13,    2,
 							41,    52,   31,    37,    47,   55,
@@ -29,6 +29,19 @@ const size_t INIT_KEY_SIZE = 64;
 const size_t SUB_KEY_SIZE = 48;
 const size_t HALF_KEY_SIZE = 28;
 const size_t NUM_ROUNDS = 16;
+
+// DES Constants
+// Initial Permutation
+const unsigned int initP[] = {58,    50,   42,    34,    26,   18,    10,    2,
+							60,    52,   44,    36,    28,   20,    12,    4,
+							62,    54,   46,    38,    30,   22,    14,    6,
+							64,    56,   48,    40,    32,   24,    16,    8,
+							57,    49,   41,    33,    25,   17,     9,    1,
+							59,    51,   43,    35,    27,   19,    11,    3,
+							61,    53,   45,    37,    29,   21,    13,    5,
+							63,    55,   47,    39,    31,   23,    15,    7};
+// sizes
+const size_t BLOCK_SIZE = 64;
 
 // Helper function since Bitset accesses elements from the right
 constexpr int reverseNum(int size, int index) {
@@ -51,7 +64,7 @@ bitset <N1 + N2> concat( const bitset <N1> & b1, const bitset <N2> & b2 ) {
 }
 
 // Generate 16 round keys
-int keygen(bitset<INIT_KEY_SIZE> initkey) {
+int keygen(const bitset<INIT_KEY_SIZE> initkey) {
 	bitset<SUB_KEY_SIZE> keyList[NUM_ROUNDS];
 
 	bitset<HALF_KEY_SIZE> c0;
@@ -101,13 +114,50 @@ int keygen(bitset<INIT_KEY_SIZE> initkey) {
 
 		keyList[i] = p2Key;
 	}
+
+	return 0;
+}
+
+// Initial Permutation
+int initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset<BLOCK_SIZE/2>* r0) {
+	int l = 0, r = 0;
+
+	for(int i=0; i<BLOCK_SIZE; i++) {
+
+		// Get left half i.e. l0
+		if(i < BLOCK_SIZE/2) {
+			// Add 1 because pc1 uses 1-indexing
+			if(msg.test(reverseNum(BLOCK_SIZE, initP[i]) + 1)) {
+				l0->set(reverseNum(BLOCK_SIZE/2, l));
+			}
+			l++;
+
+		// Get right half i.e. r0	
+		} else {
+			if(msg.test(reverseNum(BLOCK_SIZE, initP[i]) + 1)) {
+				r0->set(reverseNum(BLOCK_SIZE/2, r));
+			}
+			r++;
+		}
+	}
+
+	return 0;
 }
 
 
 int main() {
 	bitset<64> testkey(string("0001001100110100010101110111100110011011101111001101111111110001"));
-
 	keygen(testkey);
+
+	// DES Operations
+	bitset<64> testMsg(string("0000000100100011010001010110011110001001101010111100110111101111"));
+	bitset<32> left;
+	bitset<32> right;
+	// initial perm
+	initPerm(testMsg, &left, &right);
+
+	// 16 rounds
+	// final perm
 	
 }
 
@@ -131,4 +181,10 @@ int main() {
 010111110100001110110111111100101110011100111010
 101111111001000110001101001111010011111100001010
 110010110011110110001011000011100001011111110101
+*/
+
+/* messages
+IP
+L0 = 11001100000000001100110011111111 
+R0 = 11110000101010101111000010101010
 */
