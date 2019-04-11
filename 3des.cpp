@@ -99,6 +99,15 @@ const unsigned int S8[4][16] =
   1, 15,  13,  8,  10,  3,   7,  4,  12,  5,   6, 11,   0, 14,   9,  2,
   7, 11,   4,  1,   9, 12,  14,  2,   0,  6,  10, 13,  15,  3,   5,  8,
   2,  1,  14,  7,   4, 10,   8, 13,  15, 12,   9,  0,   3,  5,   6, 11};
+// Round permutation
+const unsigned int roundP[] = {16,   7,  20,  21,
+							   29,  12,  28,  17,
+							    1,  15,  23,  26,
+							    5,  18,  31,  10,
+							    2,   8,  24,  14,
+							   32,  27,   3,   9,
+							   19,  13,  30,   6,
+							   22,  11,   4,  25};
 // sizes
 const size_t BLOCK_SIZE = 64;
 const size_t SBOX_ROW = 2;
@@ -206,7 +215,7 @@ int initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset<BLOC
 }
 
 // Round Function
-int roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subkey) {
+bitset<BLOCK_SIZE/2> roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subkey) {
 
 	// Expand rn
 	bitset<SUB_KEY_SIZE> eR;
@@ -218,11 +227,11 @@ int roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subk
 		r++;
 	}
 
-	// expanded rn XOR subkey
+	// Expanded rn XOR subkey
 	bitset<SUB_KEY_SIZE> xR;
 	xR = eR ^ subkey;
 
-	// S-box rn
+	// Using S-box for substitution
 	bitset<BLOCK_SIZE/2> sR;
 	bitset<4> temp;
 	bitset<SBOX_ROW> row;
@@ -279,16 +288,20 @@ int roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subk
 		sboxNum++;
 		temp = bitset<4>(sboxVal);
 		sR = bitset<BLOCK_SIZE/2>(temp.to_ulong()) | sR << 4;
-		
-		
-		cout << sR << endl;
-		//cout << row.to_ulong() << " " << col.to_ulong() << endl;
-		//cout << S1[row.to_ulong()][col.to_ulong()] << endl;
-		
+	}
+
+	// Round permutation
+	bitset<BLOCK_SIZE/2> pR;
+	int p=0;
+	for(int i=0; i<BLOCK_SIZE/2; i++) {
+		if(sR.test(reverseNum(BLOCK_SIZE/2, roundP[i]) + 1)) {
+			pR.set(reverseNum(BLOCK_SIZE/2, p));
+		}
+		p++;
 	}
 	
 
-	return 0;
+	return pR;
 }
 
 int main() {
@@ -309,7 +322,7 @@ int main() {
 	// 16 rounds of this block
 	newLeft = right;
 	newRight = roundFunction(right, keyList[0]); //XOR left;
-
+	cout << newRight << endl;
 	// final perm
 	
 }
@@ -355,6 +368,8 @@ r0 6 bits =
 010100
 100111
 
-sbox output = 01011100100000101011010110010111
+r0 sbox output = 01011100100000101011010110010111
+
+r0 round permutation = 00100011010010101010100110111011
 
 */
