@@ -35,22 +35,31 @@ const size_t NUM_ROUNDS = 16;
 // DES Constants
 // Initial Permutation
 const unsigned int initP[] = {58,    50,   42,    34,    26,   18,    10,    2,
-							60,    52,   44,    36,    28,   20,    12,    4,
-							62,    54,   46,    38,    30,   22,    14,    6,
-							64,    56,   48,    40,    32,   24,    16,    8,
-							57,    49,   41,    33,    25,   17,     9,    1,
-							59,    51,   43,    35,    27,   19,    11,    3,
-							61,    53,   45,    37,    29,   21,    13,    5,
-							63,    55,   47,    39,    31,   23,    15,    7};
+							  60,    52,   44,    36,    28,   20,    12,    4,
+							  62,    54,   46,    38,    30,   22,    14,    6,
+							  64,    56,   48,    40,    32,   24,    16,    8,
+							  57,    49,   41,    33,    25,   17,     9,    1,
+							  59,    51,   43,    35,    27,   19,    11,    3,
+							  61,    53,   45,    37,    29,   21,    13,    5,
+							  63,    55,   47,    39,    31,   23,    15,    7};
+// Final Permutation
+const unsigned int finalP[] = {40,     8,   48,    16,    56,   24,    64,   32,
+							   39,     7,   47,    15,    55,   23,    63,   31,
+							   38,     6,   46,    14,    54,   22,    62,   30,
+							   37,     5,   45,    13,    53,   21,    61,   29,
+							   36,     4,   44,    12,    52,   20,    60,   28,
+							   35,     3,   43,    11,    51,   19,    59,   27,
+							   34,     2,   42,    10,    50,   18,    58,   26,
+							   33,     1,   41,     9,    49,   17,    57,   25};
 // Expansion
 const unsigned int expR[] = {32,     1,    2,     3,     4,    5,
-							 4,     5,    6,     7,     8,    9,
-							 8,     9,   10,    11,    12,   13,
-							12,    13,   14,    15,    16,   17,
-							16,    17,   18,    19,    20,   21,
-							20,    21,   22,    23,    24,   25,
-							24,    25,   26,    27,    28,   29,
-							28,    29,   30,    31,    32,    1};
+							  4,     5,    6,     7,     8,    9,
+							  8,     9,   10,    11,    12,   13,
+							 12,    13,   14,    15,    16,   17,
+							 16,    17,   18,    19,    20,   21,
+							 20,    21,   22,    23,    24,   25,
+							 24,    25,   26,    27,    28,   29,
+							 28,    29,   30,    31,    32,    1};
 // S-boxes
 const unsigned int S1[4][16] = 
 {14,  4,  13,  1,   2, 15,  11,  8,   3, 10,   6, 12,   5,  9,   0,  7,
@@ -304,27 +313,58 @@ bitset<BLOCK_SIZE/2> roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<S
 	return pR;
 }
 
-int main() {
-	bitset<64> testkey(string("0001001100110100010101110111100110011011101111001101111111110001"));
-	vector<bitset<SUB_KEY_SIZE>> keyList = keygen(testkey);
+int des(const string op, const bitset<BLOCK_SIZE> key, const bitset<BLOCK_SIZE> data, bitset<BLOCK_SIZE>& res) {
+	// Get subkeys
+	vector<bitset<SUB_KEY_SIZE>> keyList = keygen(key);
+	if(op.compare("decrypt") == 0) {reverse(keyList.begin(),keyList.end());}
 
 	// DES Operations
-	bitset<64> testMsg(string("0000000100100011010001010110011110001001101010111100110111101111"));
-
 	bitset<32> left;
 	bitset<32> right;
 	bitset<32> newLeft;
 	bitset<32> newRight;
 
-	// initial perm
-	initPerm(testMsg, &left, &right);
+	// Initial perm
+	initPerm(data, &left, &right);
 
-	// 16 rounds of this block
+	// Round 1
 	newLeft = right;
-	newRight = roundFunction(right, keyList[0]); //XOR left;
-	cout << newRight << endl;
-	// final perm
+	newRight = roundFunction(right, keyList[0]) ^ left;
+	// Rounds 2-16
+	for(int i=1; i<16; i++) {
+		left = newLeft;
+		right = newRight;
+
+		newLeft = right;
+		newRight = roundFunction(right, keyList[i]) ^ left;
+	}
+
+	// Final perm
+	bitset<64> preFP = concat(newRight, newLeft);
+	bitset<64> finalBlock;
+	int f=0;
+	for(int i=0; i<BLOCK_SIZE; i++) {
+		if(preFP.test(reverseNum(BLOCK_SIZE, finalP[i]) + 1)) {
+			finalBlock.set(reverseNum(BLOCK_SIZE, f));
+		}
+		f++;
+	}
+	res = finalBlock;
+
+	return 0;
+}
+
+int main() {
+	bitset<64> key(string("0001001100110100010101110111100110011011101111001101111111110001"));
+	bitset<64> data(string("0000000100100011010001010110011110001001101010111100110111101111"));
+	bitset<64> res;
+
+	des("encrypt", key, data, res);
+	cout << res << endl;
 	
+	bitset<64> plain;
+	des("decrypt", key, res, plain);
+	cout << plain << endl;
 }
 
 //1111000011001100101010101111
@@ -372,4 +412,10 @@ r0 sbox output = 01011100100000101011010110010111
 
 r0 round permutation = 00100011010010101010100110111011
 
+r1 = 11101111010010100110010101000100
+
+l16 = 01000011010000100011001000110100
+r16 = 00001010010011001101100110010101
+
+final = 1000010111101000000100110101010000001111000010101011010000000101
 */
