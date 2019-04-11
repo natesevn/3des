@@ -53,6 +53,8 @@ const unsigned int expR[] = {32,     1,    2,     3,     4,    5,
 							28,    29,   30,    31,    32,    1};
 // sizes
 const size_t BLOCK_SIZE = 64;
+const size_t SBOX_ROW = 2;
+const size_t SBOX_COL = 4;
 
 // Helper function since Bitset accesses elements from the right
 constexpr int reverseNum(int size, int index) {
@@ -61,7 +63,7 @@ constexpr int reverseNum(int size, int index) {
 
 // Circular left shift 
 template <size_t N>
-bitset<N> rotate(bitset<N> b, unsigned m){
+constexpr bitset<N> rotate(bitset<N> b, unsigned m){
 	b = b << m | b >> (N-m);
 	return b;
 }
@@ -156,17 +158,51 @@ int initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset<BLOC
 }
 
 // Round Function
-int roundFunction(const bitset<BLOCK_SIZE/2> r0) {
+int roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subkey) {
+
+	// Expand rn
 	bitset<SUB_KEY_SIZE> eR;
 	int r = 0;
-
-	// Expand r0
 	for(int i=0; i<SUB_KEY_SIZE; i++) {
-		if(r0.test(reverseNum(BLOCK_SIZE/2, expR[i]) + 1)) {
+		if(rn.test(reverseNum(BLOCK_SIZE/2, expR[i]) + 1)) {
 			eR.set(reverseNum(SUB_KEY_SIZE, r));
 		}
 		r++;
 	}
+
+	// expanded rn XOR subkey
+	bitset<SUB_KEY_SIZE> xR;
+	xR = eR ^ subkey;
+
+	// S-box rn
+	bitset<SUB_KEY_SIZE> sR;
+	bitset<SBOX_ROW> row;
+	bitset<SBOX_COL> col;
+
+	int i=0, j=6;
+
+	while(j <= SUB_KEY_SIZE) {
+
+		// Get groups of 6-bits for S-box row, col
+		row.reset();
+		col.reset();
+		while(i < j) {
+			if((j-i-1) == 5) {
+				row[1] = xR[reverseNum(SUB_KEY_SIZE, i)];
+			} else if((j-i-1) == 0) {
+				row[0] = xR[reverseNum(SUB_KEY_SIZE, i)];
+			} else {
+				col[j-i-2] = xR[reverseNum(SUB_KEY_SIZE, i)];
+			}
+			i++;
+		}
+		j+=6;
+
+		// Permute each 6-bit block using the S-box
+	}
+	
+
+	return 0;
 }
 
 int main() {
@@ -186,7 +222,7 @@ int main() {
 
 	// 16 rounds of this block
 	newLeft = right;
-	newRight = roundFunction(right); //XOR left;
+	newRight = roundFunction(right, keyList[0]); //XOR left;
 
 	// final perm
 	
@@ -220,4 +256,17 @@ L0 = 11001100000000001100110011111111
 R0 = 11110000101010101111000010101010
 
 expanded R0 = 011110100001010101010101011110100001010101010101
+
+xor'd R0 =  011000010001011110111010100001100110010100100111
+
+r0 6 bits = 
+011000
+010001
+011110
+111010
+100001
+100110
+010100
+100111
+
 */
