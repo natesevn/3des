@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <bits/stdc++.h>
+#include <des.h>
 
 using namespace std;
 
@@ -143,7 +144,7 @@ bitset <N1 + N2> concat( const bitset <N1> & b1, const bitset <N2> & b2 ) {
 }
 
 // Generate 16 round keys
-vector<bitset<SUB_KEY_SIZE>> keygen(const bitset<INIT_KEY_SIZE> initkey) {
+vector<bitset<SUB_KEY_SIZE>> Des::keygen(const bitset<INIT_KEY_SIZE> initkey) {
 	vector<bitset<SUB_KEY_SIZE>> keyList;
 
 	bitset<HALF_KEY_SIZE> c0;
@@ -198,7 +199,7 @@ vector<bitset<SUB_KEY_SIZE>> keygen(const bitset<INIT_KEY_SIZE> initkey) {
 }
 
 // Initial Permutation
-int initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset<BLOCK_SIZE/2>* r0) {
+int Des::initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset<BLOCK_SIZE/2>* r0) {
 	int l = 0, r = 0;
 
 	for(int i=0; i<BLOCK_SIZE; i++) {
@@ -224,7 +225,7 @@ int initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset<BLOC
 }
 
 // Round Function
-bitset<BLOCK_SIZE/2> roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subkey) {
+bitset<BLOCK_SIZE/2> Des::roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subkey) {
 
 	// Expand rn
 	bitset<SUB_KEY_SIZE> eR;
@@ -313,7 +314,7 @@ bitset<BLOCK_SIZE/2> roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<S
 	return pR;
 }
 
-int des(const string op, const bitset<BLOCK_SIZE> key, const bitset<BLOCK_SIZE> data, bitset<BLOCK_SIZE>& res) {
+int Des::des(const string op, const bitset<BLOCK_SIZE> key, const bitset<BLOCK_SIZE> data, bitset<BLOCK_SIZE>& res) {
 	// Get subkeys
 	vector<bitset<SUB_KEY_SIZE>> keyList = keygen(key);
 	if(op.compare("decrypt") == 0) {reverse(keyList.begin(),keyList.end());}
@@ -352,19 +353,6 @@ int des(const string op, const bitset<BLOCK_SIZE> key, const bitset<BLOCK_SIZE> 
 	res = finalBlock;
 
 	return 0;
-}
-
-int main() {
-	bitset<64> key(string("0001001100110100010101110111100110011011101111001101111111110001"));
-	bitset<64> data(string("0000000100100011010001010110011110001001101010111100110111101111"));
-	bitset<64> res;
-
-	des("encrypt", key, data, res);
-	cout << res << endl;
-	
-	bitset<64> plain;
-	des("decrypt", key, res, plain);
-	cout << plain << endl;
 }
 
 //1111000011001100101010101111
