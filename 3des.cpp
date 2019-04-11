@@ -223,7 +223,8 @@ int roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subk
 	xR = eR ^ subkey;
 
 	// S-box rn
-	bitset<SUB_KEY_SIZE> sR;
+	bitset<BLOCK_SIZE/2> sR;
+	bitset<4> temp;
 	bitset<SBOX_ROW> row;
 	bitset<SBOX_COL> col;
 
@@ -275,8 +276,12 @@ int roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subk
 			default: 
 				cout << "FAILED" << endl;
 		}
-		cout << sboxVal << endl;
 		sboxNum++;
+		temp = bitset<4>(sboxVal);
+		sR = bitset<BLOCK_SIZE/2>(temp.to_ulong()) | sR << 4;
+		
+		
+		cout << sR << endl;
 		//cout << row.to_ulong() << " " << col.to_ulong() << endl;
 		//cout << S1[row.to_ulong()][col.to_ulong()] << endl;
 		
@@ -350,6 +355,6 @@ r0 6 bits =
 010100
 100111
 
-sbox output = 0101 1100 1000 0010 1011 0101 1001 0111
+sbox output = 01011100100000101011010110010111
 
 */
