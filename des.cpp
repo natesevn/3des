@@ -137,7 +137,7 @@ constexpr bitset<N> rotate(bitset<N> b, unsigned m){
 
 // Concatenate 2 bitsets into 1; https://stackoverflow.com/questions/3061721/concatenate-boostdynamic-bitset-or-stdbitset
 template <size_t N1, size_t N2 >
-bitset <N1 + N2> concat( const bitset <N1> & b1, const bitset <N2> & b2 ) {
+constexpr bitset <N1 + N2> concat( const bitset <N1> & b1, const bitset <N2> & b2 ) {
     string s1 = b1.to_string();
     string s2 = b2.to_string();
     return bitset <N1 + N2>( s1 + s2 );
