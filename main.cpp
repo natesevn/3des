@@ -35,7 +35,27 @@ int main() {
 	cout << "type 8 char msg: ";
 	string message;
 	getline(cin, message);
-	bitset<64> plain = string2bin<64>(message);
+
+	// Split message into 64-bit block
+	vector<bitset<Des::BLOCK_SIZE>> messageList;
+	string temp;
+	int numPadB = 0;
+	bitset<64> bitString;
+	
+	for(size_t i=0; i<message.size(); i+=8) {
+		temp = message.substr(i, 8);
+		bitString = string2bin<64>(temp);
+
+		// Pad if necessary
+		if(temp.length() < 8) {
+			numPadB = 8-temp.length();
+			
+			for(int j=0; j<numPadB; j++) {
+				bitString = bitString << 8 | bitset<64>(numPadB);
+			}
+		} 
+		messageList.push_back(bitString);
+	}
 
 	//cout << "type 8 char password: ";
 	//string pw;
@@ -46,18 +66,27 @@ int main() {
 	bitset<64> key2(string("10001101000101011001111000100110101011110011011110111100000001"));
 	bitset<64> key3(string("100010101100111100010011010101111001101111011110000000100100011"));
 
+	// ECB
 	// Encrypt => E1, D2, E3
+	vector<bitset<Des::BLOCK_SIZE>> cipherList;
 	bitset<64> c1, c2, cipher;
-	Des::des("encrypt", key1, plain, c1);
-	Des::des("decrypt", key2, c1, c2);
-	Des::des("encrypt", key3, c2, cipher);
-	cout << "bin cipher is: " << cipher.to_string() << endl;
-	
+	for(auto it: messageList) {
+		Des::des("encrypt", key1, it, c1);
+		Des::des("decrypt", key2, c1, c2);
+		Des::des("encrypt", key3, c2, cipher);
+		cout << "bin cipher is: " << cipher.to_string() << endl;
+		cipherList.push_back(cipher);
+	}	
+
 	// Decrypt => D3, E2, D1
+	vector<string> resList;
 	bitset<64> r1, r2, res;
-	Des::des("decrypt", key3, cipher, r1);
-	Des::des("encrypt", key2, r1, r2);
-	Des::des("decrypt", key1, r2, res);
-	string output = bin2string(res);
-	cout << "decrypted cipher is: " << output << endl;
+	for(auto it: cipherList) {
+		Des::des("decrypt", key3, it, r1);
+		Des::des("encrypt", key2, r1, r2);
+		Des::des("decrypt", key1, r2, res);
+		string output = bin2string(res);
+		cout << "decrypted cipher is: " << output << endl;
+		resList.push_back(output);
+	}
 }
