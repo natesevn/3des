@@ -6,6 +6,7 @@
 #include <vector>
 #include <bits/stdc++.h>
 #include <openssl/evp.h>
+#include <openssl/rand.h>
 
 using namespace std;
 
@@ -125,6 +126,62 @@ vector<string> CBC_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des:
 	return resList;
 }
 
+vector<bitset<Des::BLOCK_SIZE>> OFB_E(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des::BLOCK_SIZE>> messageList, bitset<64> iv) {
+	vector<bitset<Des::BLOCK_SIZE>> cipherList;
+	bitset<64> s1, s2, randstream;
+	bitset<64> cipher;
+	bitset<64> temp;
+	bool init = true;
+
+	for(auto it: messageList) {
+
+		// Encrypt IV first
+		if(init) {
+			Des::des("encrypt", keyList[0], iv, s1);
+			Des::des("decrypt", keyList[1], s1, s2);
+			Des::des("encrypt", keyList[2], s2, randstream);
+			init = false;
+		} else {
+			Des::des("encrypt", keyList[0], temp, s1);
+			Des::des("decrypt", keyList[1], s1, s2);
+			Des::des("encrypt", keyList[2], s2, randstream);
+		}
+
+		cipher = randstream^it;
+		temp = randstream;
+		cipherList.push_back(cipher);
+	}	
+
+	return cipherList;
+}
+
+vector<string> OFB_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des::BLOCK_SIZE>> cipherList, bitset<64> iv) {
+	vector<string> resList;
+	bitset<64> s1, s2, randstream;
+	bitset<64> temp;
+	bool init = true;
+
+	for(auto it: cipherList) {
+
+		if(init) {
+			Des::des("encrypt", keyList[0], iv, s1);
+			Des::des("decrypt", keyList[1], s1, s2);
+			Des::des("encrypt", keyList[2], s2, randstream);
+			init = false;
+		} else {
+			Des::des("encrypt", keyList[0], temp, s1);
+			Des::des("decrypt", keyList[1], s1, s2);
+			Des::des("encrypt", keyList[2], s2, randstream);
+		}
+
+		string output = bin2string(randstream^it);
+		temp = randstream;
+		resList.push_back(output);
+	}
+
+	return resList;
+}
+
 
 int main() {
 
@@ -185,8 +242,15 @@ int main() {
 	}
 
 	// Encrypt => E1, D2, E3
-	bitset<64> iv(string("0011000100110010001100110011010000110101001101100011011100111000"));
-	vector<bitset<Des::BLOCK_SIZE>> cipherList = CBC_E(keyList, messageList, iv);
+	// Generate random IV
+	unsigned char *temp_iv = new unsigned char[8];
+	if (!RAND_bytes(temp_iv, 8)) {
+		cout << "Error generating IV for encryption." << endl;
+		exit(EXIT_FAILURE);
+	}
+	bitset<64> iv = chararr2bin<64>(temp_iv);
+	cout << iv << endl;
+	vector<bitset<Des::BLOCK_SIZE>> cipherList = OFB_E(keyList, messageList, iv);
 
 	stringstream test;
 	for(auto it: cipherList) {
@@ -195,7 +259,7 @@ int main() {
 	cout << test.str() << endl;
 	
 	// Decrypt => D3, E2, D1
-	vector<string> resList = CBC_D(keyList, cipherList, iv);
+	vector<string> resList = OFB_D(keyList, cipherList, iv);
 	for(auto it : resList) {
 		cout << it << endl;
 	}
