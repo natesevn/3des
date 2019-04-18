@@ -131,7 +131,7 @@ int main() {
 	// Get password
 	cout << "type password: ";
 	string mypass;
-	cin >> mypass;
+	getline(cin, mypass);
 	char *pwd = &mypass[0];
 
 	// Get key
@@ -144,20 +144,23 @@ int main() {
 	bitset<192> key = chararr2bin<192>(cipherKey);
 
 	// Split key into 3 parts
-	bitset<64> key1(string("0011000100110010001100110011010000110101001101100011011100111000"));
-	bitset<64> key2(string("0011100100110000001100010011001000110011001101000011010100110110"));
-	bitset<64> key3(string("0100000101000010010000110100010001000101010001100100011101001000"));
+	bitset<192> mask(0xffffffffffffffff);
+	bitset<64> key1((key & mask).to_ulong());
+
+	key >>= 64;
+	bitset<64> key2((key & mask).to_ulong());
+
+	key >>= 64;
+	bitset<64> key3((key & mask).to_ulong());
 	
 	vector<bitset<Des::BLOCK_SIZE>> keyList;
 	keyList.push_back(key1);
 	keyList.push_back(key2);
 	keyList.push_back(key3);
 
-
 	// Get message
 	cout << "type msg: ";
 	string message;
-	cin.ignore();
 	getline(cin, message);
 	
 	// Split message into 64-bit block
@@ -180,11 +183,6 @@ int main() {
 		} 
 		messageList.push_back(bitString);
 	}
-
-	bitset<192> zoom(*cipherKey);
-	cout << zoom << endl;
-
-
 
 	// Encrypt => E1, D2, E3
 	bitset<64> iv(string("0011000100110010001100110011010000110101001101100011011100111000"));
