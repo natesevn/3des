@@ -1,16 +1,30 @@
 #include <des.h>
+#include <keygen.h>
+
 #include <sstream>
 #include <string>
 #include <vector>
 #include <bits/stdc++.h>
+#include <openssl/evp.h>
 
 using namespace std;
+
+const size_t KEY_SIZE = 24;
 
 template <size_t N>
 constexpr bitset<N> string2bin(string in) {
 	bitset<N> out;
 	for(char c : in) {
 		out = bitset<N>(c) | out << 8;
+	}
+	return out;
+}
+
+template <size_t N>
+constexpr bitset<N> chararr2bin(unsigned char* in) {
+	bitset<N> out;
+	for(int i=0; i<24; i++) {
+		out = bitset<N>(in[i]) | out << 8;
 	}
 	return out;
 }
@@ -113,10 +127,39 @@ vector<string> CBC_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des:
 
 
 int main() {
-	cout << "type 8 char msg: ";
-	string message;
-	getline(cin, message);
 
+	// Get password
+	cout << "type password: ";
+	string mypass;
+	cin >> mypass;
+	char *pwd = &mypass[0];
+
+	// Get key
+	unsigned char* cipherKey = new unsigned char[KEY_SIZE];
+	int status = Keygen::get3DesKey(pwd, cipherKey);
+	if(status == -1) {
+		cout << "Failed to get cipher key." << endl;
+		exit(EXIT_FAILURE);
+	}
+	bitset<192> key = chararr2bin<192>(cipherKey);
+
+	// Split key into 3 parts
+	bitset<64> key1(string("0011000100110010001100110011010000110101001101100011011100111000"));
+	bitset<64> key2(string("0011100100110000001100010011001000110011001101000011010100110110"));
+	bitset<64> key3(string("0100000101000010010000110100010001000101010001100100011101001000"));
+	
+	vector<bitset<Des::BLOCK_SIZE>> keyList;
+	keyList.push_back(key1);
+	keyList.push_back(key2);
+	keyList.push_back(key3);
+
+
+	// Get message
+	cout << "type msg: ";
+	string message;
+	cin.ignore();
+	getline(cin, message);
+	
 	// Split message into 64-bit block
 	vector<bitset<Des::BLOCK_SIZE>> messageList;
 	string temp;
@@ -138,19 +181,10 @@ int main() {
 		messageList.push_back(bitString);
 	}
 
-	//cout << "type 8 char password: ";
-	//string pw;
-	//cin >> pw;
-	//bitset<64> key = string2bin<64>(pw);
+	bitset<192> zoom(*cipherKey);
+	cout << zoom << endl;
 
-	bitset<64> key1(string("0011000100110010001100110011010000110101001101100011011100111000"));
-	bitset<64> key2(string("0011100100110000001100010011001000110011001101000011010100110110"));
-	bitset<64> key3(string("0100000101000010010000110100010001000101010001100100011101001000"));
-	
-	vector<bitset<Des::BLOCK_SIZE>> keyList;
-	keyList.push_back(key1);
-	keyList.push_back(key2);
-	keyList.push_back(key3);
+
 
 	// Encrypt => E1, D2, E3
 	bitset<64> iv(string("0011000100110010001100110011010000110101001101100011011100111000"));
