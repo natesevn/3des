@@ -27,11 +27,6 @@ const unsigned int pc2[] = {14,    17,   11,    24,     1,    5,
 							46,    42,   50,    36,    29,   32};
 // Left-shifts
 const unsigned int lShift[] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
-// Sizes
-const size_t INIT_KEY_SIZE = 64;
-const size_t SUB_KEY_SIZE = 48;
-const size_t HALF_KEY_SIZE = 28;
-const size_t NUM_ROUNDS = 16;
 
 // DES Constants
 // Initial Permutation
@@ -118,10 +113,6 @@ const unsigned int roundP[] = {16,   7,  20,  21,
 							   32,  27,   3,   9,
 							   19,  13,  30,   6,
 							   22,  11,   4,  25};
-// sizes
-const size_t BLOCK_SIZE = 64;
-const size_t SBOX_ROW = 2;
-const size_t SBOX_COL = 4;
 
 /*
  * Reverses array index to access Bitset elements in order
@@ -160,38 +151,38 @@ constexpr bitset <N1 + N2> concat( const bitset <N1> & b1, const bitset <N2> & b
 }
 
 // Generate 16 round keys
-vector<bitset<SUB_KEY_SIZE>> Des::keygen(const bitset<INIT_KEY_SIZE> initkey) {
-	vector<bitset<SUB_KEY_SIZE>> keyList;
+vector<bitset<Des::SUB_KEY_SIZE>> Des::keygen(const bitset<Des::INIT_KEY_SIZE> initkey) {
+	vector<bitset<Des::SUB_KEY_SIZE>> keyList;
 
-	bitset<HALF_KEY_SIZE> c0;
-	bitset<HALF_KEY_SIZE> d0;
+	bitset<Des::HALF_KEY_SIZE> c0;
+	bitset<Des::HALF_KEY_SIZE> d0;
 	int c = 0, d = 0;
 	
 	// Initial key permutation
-	for(int i=0; i<HALF_KEY_SIZE*2; i++) {
+	for(int i=0; i<Des::HALF_KEY_SIZE*2; i++) {
 
 		// Get left half of subkey i.e. c0
-		if(i < HALF_KEY_SIZE) {
-			if(initkey.test(reverseNum(INIT_KEY_SIZE, pc1[i]) + 1)) {
-				c0.set(reverseNum(HALF_KEY_SIZE, c));
+		if(i < Des::HALF_KEY_SIZE) {
+			if(initkey.test(reverseNum(Des::INIT_KEY_SIZE, pc1[i]) + 1)) {
+				c0.set(reverseNum(Des::HALF_KEY_SIZE, c));
 			}
 			c++;
 
 		// Get right half of subkey i.e. d0	
 		} else {
-			if(initkey.test(reverseNum(INIT_KEY_SIZE, pc1[i]) + 1)) {
-				d0.set(reverseNum(HALF_KEY_SIZE, d));
+			if(initkey.test(reverseNum(Des::INIT_KEY_SIZE, pc1[i]) + 1)) {
+				d0.set(reverseNum(Des::HALF_KEY_SIZE, d));
 			}
 			d++;
 		}
 	}
 
-	bitset<HALF_KEY_SIZE*2> tempKey;
-	bitset<SUB_KEY_SIZE> p2Key;
+	bitset<Des::HALF_KEY_SIZE*2> tempKey;
+	bitset<Des::SUB_KEY_SIZE> p2Key;
 	int p = 0;
 
 	// Create 16 round keys
-	for(int i=0; i<NUM_ROUNDS; i++) {
+	for(int i=0; i<Des::NUM_ROUNDS; i++) {
 
 		// Circular left shift based on round number
 		c0 = rotate(c0, lShift[i]);
@@ -203,9 +194,9 @@ vector<bitset<SUB_KEY_SIZE>> Des::keygen(const bitset<INIT_KEY_SIZE> initkey) {
 		// Permutation to get final 48-bit subkey
 		p = 0;
 		p2Key.reset();
-		for(int i=0; i<SUB_KEY_SIZE; i++) {
-			if(tempKey.test(reverseNum(HALF_KEY_SIZE*2, pc2[i]) + 1)) {
-				p2Key.set(reverseNum(SUB_KEY_SIZE, p));
+		for(int i=0; i<Des::SUB_KEY_SIZE; i++) {
+			if(tempKey.test(reverseNum(Des::HALF_KEY_SIZE*2, pc2[i]) + 1)) {
+				p2Key.set(reverseNum(Des::SUB_KEY_SIZE, p));
 			}
 			p++;
 		}
@@ -217,22 +208,22 @@ vector<bitset<SUB_KEY_SIZE>> Des::keygen(const bitset<INIT_KEY_SIZE> initkey) {
 }
 
 // Initial Permutation
-int Des::initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset<BLOCK_SIZE/2>* r0) {
+int Des::initPerm(const bitset<Des::BLOCK_SIZE> msg, bitset<Des::BLOCK_SIZE/2>* l0, bitset<Des::BLOCK_SIZE/2>* r0) {
 	int l = 0, r = 0;
 
-	for(int i=0; i<BLOCK_SIZE; i++) {
+	for(int i=0; i<Des::BLOCK_SIZE; i++) {
 
 		// Permute left half i.e. l0
-		if(i < BLOCK_SIZE/2) {
-			if(msg.test(reverseNum(BLOCK_SIZE, initP[i]) + 1)) {
-				l0->set(reverseNum(BLOCK_SIZE/2, l));
+		if(i < Des::BLOCK_SIZE/2) {
+			if(msg.test(reverseNum(Des::BLOCK_SIZE, initP[i]) + 1)) {
+				l0->set(reverseNum(Des::BLOCK_SIZE/2, l));
 			}
 			l++;
 
 		// Permute right half i.e. r0	
 		} else {
-			if(msg.test(reverseNum(BLOCK_SIZE, initP[i]) + 1)) {
-				r0->set(reverseNum(BLOCK_SIZE/2, r));
+			if(msg.test(reverseNum(Des::BLOCK_SIZE, initP[i]) + 1)) {
+				r0->set(reverseNum(Des::BLOCK_SIZE/2, r));
 			}
 			r++;
 		}
@@ -242,42 +233,42 @@ int Des::initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset
 }
 
 // Round Function
-bitset<BLOCK_SIZE/2> Des::roundFunction(const bitset<BLOCK_SIZE/2> rn, const bitset<SUB_KEY_SIZE> subkey) {
+bitset<Des::BLOCK_SIZE/2> Des::roundFunction(const bitset<Des::BLOCK_SIZE/2> rn, const bitset<Des::SUB_KEY_SIZE> subkey) {
 
 	// Expand rn
-	bitset<SUB_KEY_SIZE> eR;
+	bitset<Des::SUB_KEY_SIZE> eR;
 	int r = 0;
-	for(int i=0; i<SUB_KEY_SIZE; i++) {
-		if(rn.test(reverseNum(BLOCK_SIZE/2, expR[i]) + 1)) {
-			eR.set(reverseNum(SUB_KEY_SIZE, r));
+	for(int i=0; i<Des::SUB_KEY_SIZE; i++) {
+		if(rn.test(reverseNum(Des::BLOCK_SIZE/2, expR[i]) + 1)) {
+			eR.set(reverseNum(Des::SUB_KEY_SIZE, r));
 		}
 		r++;
 	}
 
 	// Expanded rn XOR subkey
-	bitset<SUB_KEY_SIZE> xR;
+	bitset<Des::SUB_KEY_SIZE> xR;
 	xR = eR ^ subkey;
 
 	// Using S-box for substitution
-	bitset<BLOCK_SIZE/2> sR;
+	bitset<Des::BLOCK_SIZE/2> sR;
 	bitset<4> temp;
-	bitset<SBOX_ROW> row;
-	bitset<SBOX_COL> col;
+	bitset<Des::SBOX_ROW> row;
+	bitset<Des::SBOX_COL> col;
 
 	int i=0, j=6, s=0, sboxNum=0, sboxVal;
 
-	while(j <= SUB_KEY_SIZE) {
+	while(j <= Des::SUB_KEY_SIZE) {
 
 		// Get groups of 6-bits for S-box row, col
 		row.reset();
 		col.reset();
 		while(i < j) {
 			if((j-i-1) == 5) {
-				row[1] = xR[reverseNum(SUB_KEY_SIZE, i)];
+				row[1] = xR[reverseNum(Des::SUB_KEY_SIZE, i)];
 			} else if((j-i-1) == 0) {
-				row[0] = xR[reverseNum(SUB_KEY_SIZE, i)];
+				row[0] = xR[reverseNum(Des::SUB_KEY_SIZE, i)];
 			} else {
-				col[j-i-2] = xR[reverseNum(SUB_KEY_SIZE, i)];
+				col[j-i-2] = xR[reverseNum(Des::SUB_KEY_SIZE, i)];
 			}
 			i++;
 		}
@@ -314,15 +305,15 @@ bitset<BLOCK_SIZE/2> Des::roundFunction(const bitset<BLOCK_SIZE/2> rn, const bit
 		}
 		sboxNum++;
 		temp = bitset<4>(sboxVal);
-		sR = bitset<BLOCK_SIZE/2>(temp.to_ulong()) | sR << 4;
+		sR = bitset<Des::BLOCK_SIZE/2>(temp.to_ulong()) | sR << 4;
 	}
 
 	// Round permutation
-	bitset<BLOCK_SIZE/2> pR;
+	bitset<Des::BLOCK_SIZE/2> pR;
 	int p=0;
-	for(int i=0; i<BLOCK_SIZE/2; i++) {
-		if(sR.test(reverseNum(BLOCK_SIZE/2, roundP[i]) + 1)) {
-			pR.set(reverseNum(BLOCK_SIZE/2, p));
+	for(int i=0; i<Des::BLOCK_SIZE/2; i++) {
+		if(sR.test(reverseNum(Des::BLOCK_SIZE/2, roundP[i]) + 1)) {
+			pR.set(reverseNum(Des::BLOCK_SIZE/2, p));
 		}
 		p++;
 	}	
@@ -330,9 +321,9 @@ bitset<BLOCK_SIZE/2> Des::roundFunction(const bitset<BLOCK_SIZE/2> rn, const bit
 	return pR;
 }
 
-int Des::des(const string op, const bitset<BLOCK_SIZE> key, const bitset<BLOCK_SIZE> data, bitset<BLOCK_SIZE>& res) {
+int Des::des(const string op, const bitset<Des::BLOCK_SIZE> key, const bitset<Des::BLOCK_SIZE> data, bitset<Des::BLOCK_SIZE>& res) {
 	// Get subkeys
-	vector<bitset<SUB_KEY_SIZE>> keyList = keygen(key);
+	vector<bitset<Des::SUB_KEY_SIZE>> keyList = keygen(key);
 	if(op.compare("decrypt") == 0) {reverse(keyList.begin(),keyList.end());}
 
 	// DES Operations
@@ -360,9 +351,9 @@ int Des::des(const string op, const bitset<BLOCK_SIZE> key, const bitset<BLOCK_S
 	bitset<64> preFP = concat(newRight, newLeft);
 	bitset<64> finalBlock;
 	int f=0;
-	for(int i=0; i<BLOCK_SIZE; i++) {
-		if(preFP.test(reverseNum(BLOCK_SIZE, finalP[i]) + 1)) {
-			finalBlock.set(reverseNum(BLOCK_SIZE, f));
+	for(int i=0; i<Des::BLOCK_SIZE; i++) {
+		if(preFP.test(reverseNum(Des::BLOCK_SIZE, finalP[i]) + 1)) {
+			finalBlock.set(reverseNum(Des::BLOCK_SIZE, f));
 		}
 		f++;
 	}
