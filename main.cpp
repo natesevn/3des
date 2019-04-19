@@ -2,6 +2,8 @@
 #include <keygen.h>
 
 #include <sstream>
+#include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <bits/stdc++.h>
@@ -182,55 +184,45 @@ vector<string> OFB_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des:
 	return resList;
 }
 
+int getKeys(char *pwd, vector<bitset<Des::BLOCK_SIZE>> &keyList) {
+	unsigned char *cipherKey = new unsigned char[KEY_SIZE];
 
-int main() {
-
-	// Get password
-	cout << "type password: ";
-	string mypass;
-	getline(cin, mypass);
-	char *pwd = &mypass[0];
-
-	// Get key
-	unsigned char* cipherKey = new unsigned char[KEY_SIZE];
+	// Use PBKDF2 to get keys
 	int status = Keygen::get3DesKey(pwd, cipherKey);
 	if(status == -1) {
-		cout << "Failed to get cipher key." << endl;
-		exit(EXIT_FAILURE);
+		return -1;
 	}
+
+	// Convert character array key into binary key
 	bitset<192> key = chararr2bin<192>(cipherKey);
 
 	// Split key into 3 parts
 	bitset<192> mask(0xffffffffffffffff);
 	bitset<64> key1((key & mask).to_ulong());
-
 	key >>= 64;
 	bitset<64> key2((key & mask).to_ulong());
-
 	key >>= 64;
 	bitset<64> key3((key & mask).to_ulong());
 	
-	vector<bitset<Des::BLOCK_SIZE>> keyList;
+	// Create key vector
 	keyList.push_back(key1);
 	keyList.push_back(key2);
 	keyList.push_back(key3);
 
-	// Get message
-	cout << "type msg: ";
-	string message;
-	getline(cin, message);
-	
-	// Split message into 64-bit block
-	vector<bitset<Des::BLOCK_SIZE>> messageList;
+	return 0;
+}
+
+vector<bitset<Des::BLOCK_SIZE>> formatMessage(string message) {
 	string temp;
 	int numPadB = 0;
 	bitset<64> bitString;
 	
+	vector<bitset<Des::BLOCK_SIZE>> messageList;
 	for(size_t i=0; i<message.size(); i+=8) {
 		temp = message.substr(i, 8);
 		bitString = string2bin<64>(temp);
 
-		// Pad if necessary
+		// Pad with whole bytes
 		if(temp.length() < 8) {
 			numPadB = 8-temp.length();
 			
@@ -241,26 +233,154 @@ int main() {
 		messageList.push_back(bitString);
 	}
 
-	// Encrypt => E1, D2, E3
-	// Generate random IV
-	unsigned char *temp_iv = new unsigned char[8];
-	if (!RAND_bytes(temp_iv, 8)) {
-		cout << "Error generating IV for encryption." << endl;
+	return messageList;
+}
+
+
+int main() {
+	int status = 0;
+
+	string choice, result;
+	cout << "Encrypt or decrypt: ";
+	cin >> choice;
+	cin.ignore();
+	transform(choice.begin(), choice.end(), choice.begin(), ::tolower);
+
+	// Get password
+	cout << "type password: ";
+	string mypass;
+	getline(cin, mypass);
+	char* pwd = &mypass[0];
+
+	// Get key
+	vector<bitset<Des::BLOCK_SIZE>> keyList;
+	status = getKeys(pwd, keyList);
+	if(status == -1) {
+		cout << "Failed to get cipher key." << endl;
 		exit(EXIT_FAILURE);
 	}
-	bitset<64> iv = chararr2bin<64>(temp_iv);
-	cout << iv << endl;
-	vector<bitset<Des::BLOCK_SIZE>> cipherList = OFB_E(keyList, messageList, iv);
 
-	stringstream test;
-	for(auto it: cipherList) {
-		test << hex << uppercase << it.to_ulong();
-	}
-	cout << test.str() << endl;
+	string message;
+	vector<bitset<Des::BLOCK_SIZE>> messageList;
+	if(choice == "encrypt")	 {
+
+		cout << "Select ECB, CBC, or OFB: ";
+		cin >> choice;
+		cin.ignore();
+		transform(choice.begin(), choice.end(), choice.begin(), ::tolower);
+
+		string fileName;
+		cout << "Enter filename: ";
+		cin >> fileName;
+		cin.ignore();
+
+		// Get message
+		cout << "type msg: ";
+		getline(cin, message);
+
+		// Split and pad message
+		messageList = formatMessage(message);
+
+		// Generate iv
+		unsigned char *temp_iv = new unsigned char[8];
+		if (!RAND_bytes(temp_iv, 8)) {
+			cout << "Error generating IV for encryption." << endl;
+			exit(EXIT_FAILURE);
+		}
+		bitset<64> iv = chararr2bin<64>(temp_iv);
+
+		// Encrypt
+		vector<bitset<Des::BLOCK_SIZE>> cipherList;
+		if(choice == "ecb") {
+			cipherList = ECB_E(keyList, messageList);
+		} else if(choice == "cbc") {
+			cipherList = CBC_E(keyList, messageList, iv);
+		} else if(choice == "ofb") {
+			cipherList = OFB_E(keyList, messageList, iv);
+		} else {
+			cout << "invalid option" << endl;
+			exit(EXIT_FAILURE);
+		}
+
+		// Write output to binary file
+		unsigned long n = 0;
+		cout << "Writing binary file..." << endl;
+		ofstream file_o(fileName, ios::binary);
+		
+		// Write iv first
+		n = iv.to_ulong();
+		file_o.write(reinterpret_cast<const char *>(&n), sizeof(n));
+
+		// Write rest of cipher
+		for (auto it : cipherList){
+			n = it.to_ulong();
+			file_o.write(reinterpret_cast<const char *>(&n), sizeof(n));
+		}
+		file_o.close();
+
+	} else if(choice == "decrypt") {
+
+		cout << "Select ECB, CBC, or OFB: ";
+		cin >> choice;
+		cin.ignore();
+		transform(choice.begin(), choice.end(), choice.begin(), ::tolower);
+		
+		string fileName;
+		cout << "Enter filename: ";
+		cin >> fileName;
+		cin.ignore();
+
+		// Get cipher from binary file
+		unsigned long n = 0;
+		cout << "Reading binary file..." << endl;
+		vector<bitset<Des::BLOCK_SIZE>> cipherList;
+		ifstream file_i (fileName, ios::binary);
+		if(file_i.is_open()){
 	
-	// Decrypt => D3, E2, D1
-	vector<string> resList = OFB_D(keyList, cipherList, iv);
-	for(auto it : resList) {
-		cout << it << endl;
+			while(true){
+				file_i.read(reinterpret_cast<char *>(&n),sizeof(n));
+				cipherList.push_back(bitset<64>(n));
+	
+				// Exit if EOF
+				if(file_i.eof()) {
+					break;
+				}
+			}
+
+		} else {
+			cout << "File not found" << endl;
+			exit(EXIT_FAILURE);
+		}
+		file_i.close();
+
+		// File IO always reads an extra element; get rid of it
+		cipherList.pop_back();
+
+		// Get iv; iv is first line read from file
+		bitset<Des::BLOCK_SIZE> iv = cipherList.front();
+		cipherList.erase(cipherList.begin());
+
+		// Decrypt 
+		vector<string> resList;
+		if(choice == "ecb") {
+			resList = ECB_D(keyList, cipherList);
+		} else if(choice == "cbc") {
+			resList = CBC_D(keyList, cipherList, iv);
+		} else if(choice == "ofb") {
+			resList = OFB_D(keyList, cipherList, iv);
+		} else {
+			cout << "invalid option" << endl;
+			exit(EXIT_FAILURE);
+		}
+
+		for(auto it : resList) {
+			cout << it;
+		}
+		cout << endl;
+
+	} else {
+		cout << "invalid option" << endl;
+		exit(EXIT_FAILURE);
 	}
+
 }
