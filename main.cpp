@@ -428,6 +428,14 @@ int main() {
 			exit(EXIT_FAILURE);
 		}
 
+		// Output cipher in hex
+		stringstream test;
+		cout << "Hex cipher is: ";
+		for(auto it: cipherList) {
+			test << hex << uppercase << it.to_ulong();
+		}
+		cout << test.str() << endl;
+
 		// Write output to binary file
 		unsigned long n = 0;
 		ofstream file_o(fileName, ios::binary);
