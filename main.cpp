@@ -1,6 +1,5 @@
 #include <des.h>
 #include <keygen.h>
-
 #include <sstream>
 #include <iostream>
 #include <fstream>
@@ -14,6 +13,11 @@ using namespace std;
 
 const size_t KEY_SIZE = 24;
 
+/* 
+ * Converts string into binary string
+ * Returns a bitset containing the representation of the string in bits
+ * @in: the string to encode
+ */
 template <size_t N>
 constexpr bitset<N> string2bin(string in) {
 	bitset<N> out;
@@ -23,15 +27,25 @@ constexpr bitset<N> string2bin(string in) {
 	return out;
 }
 
+/*
+ * Converts an array of characters into bits
+ * Returns a bitset containing the representation of the character array
+ * @in: the character array to encode
+ */
 template <size_t N>
 constexpr bitset<N> chararr2bin(unsigned char* in) {
 	bitset<N> out;
-	for(int i=0; i<24; i++) {
+	for(int i=0; i<strlen((char*)in)-1; i++) {
 		out = bitset<N>(in[i]) | out << 8;
 	}
 	return out;
 }
 
+/*
+ * Converts bitset into strings
+ * Returns the string representation of a bitset
+ * @in: the bitset to convert
+ */
 template <size_t N>
 constexpr string bin2string(bitset<N> in) {
 	string out;
@@ -48,6 +62,12 @@ constexpr string bin2string(bitset<N> in) {
 	return out;
 }
 
+/*
+ * Encryption with ECB chain mode
+ * Returns a vector of ciphers
+ * @keyList: list of 3 keys for 3DES
+ * @messageList: list of messages to encrypt
+ */
 vector<bitset<Des::BLOCK_SIZE>> ECB_E(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des::BLOCK_SIZE>> messageList) {
 	vector<bitset<Des::BLOCK_SIZE>> cipherList;
 	bitset<64> c1, c2, cipher;
@@ -61,6 +81,12 @@ vector<bitset<Des::BLOCK_SIZE>> ECB_E(vector<bitset<Des::BLOCK_SIZE>> keyList, v
 	return cipherList;
 }
 
+/*
+ * Decryption with ECB chain mode
+ * Returns a vector of messages
+ * @keyList: list of 3 keys for 3DES
+ * @cipherList: list of ciphers to decrypt
+ */
 vector<string> ECB_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des::BLOCK_SIZE>> cipherList) {
 	vector<string> resList;
 	bitset<64> r1, r2, res;
@@ -75,6 +101,13 @@ vector<string> ECB_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des:
 	return resList;
 }
 
+/*
+ * Encryption with CBC chain mode
+ * Returns a vector of ciphers
+ * @keyList: list of 3 keys for 3DES
+ * @messageList: list of messages to encrypt
+ * @iv: iv used
+ */
 vector<bitset<Des::BLOCK_SIZE>> CBC_E(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des::BLOCK_SIZE>> messageList, bitset<64> iv) {
 	vector<bitset<Des::BLOCK_SIZE>> cipherList;
 	bitset<64> c1, c2, cipher;
@@ -100,6 +133,13 @@ vector<bitset<Des::BLOCK_SIZE>> CBC_E(vector<bitset<Des::BLOCK_SIZE>> keyList, v
 	return cipherList;
 }
 
+/*
+ * Decryption with CBC chain mode
+ * Returns a vector of messages
+ * @keyList: list of 3 keys for 3DES
+ * @cipherList: list of ciphers to decrypt
+ * @iv: iv used
+ */
 vector<string> CBC_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des::BLOCK_SIZE>> cipherList, bitset<64> iv) {
 	vector<string> resList;
 	bitset<64> r1, r2, res;
@@ -128,6 +168,13 @@ vector<string> CBC_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des:
 	return resList;
 }
 
+/*
+ * Encryption with OFB chain mode
+ * Returns a vector of ciphers
+ * @keyList: list of 3 keys for 3DES
+ * @messageList: list of messages to encrypt
+ * @iv: iv used
+ */
 vector<bitset<Des::BLOCK_SIZE>> OFB_E(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des::BLOCK_SIZE>> messageList, bitset<64> iv) {
 	vector<bitset<Des::BLOCK_SIZE>> cipherList;
 	bitset<64> s1, s2, randstream;
@@ -157,6 +204,13 @@ vector<bitset<Des::BLOCK_SIZE>> OFB_E(vector<bitset<Des::BLOCK_SIZE>> keyList, v
 	return cipherList;
 }
 
+/*
+ * Decryption with OFB chain mode
+ * Returns a vector of messages
+ * @keyList: list of 3 keys for 3DES
+ * @cipherList: list of ciphers to decrypt
+ * @iv: iv used
+ */
 vector<string> OFB_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des::BLOCK_SIZE>> cipherList, bitset<64> iv) {
 	vector<string> resList;
 	bitset<64> s1, s2, randstream;
@@ -184,6 +238,12 @@ vector<string> OFB_D(vector<bitset<Des::BLOCK_SIZE>> keyList, vector<bitset<Des:
 	return resList;
 }
 
+/*
+ * Derives a 192-bit key from an entered password using PBKDF2, and splits it into 3 64-bit keys for 3DES
+ * Returns 0 on success, -1 otherwise
+ * @pwd: entered user password
+ * @keyList: vector to store resulting keys
+ */
 int getKeys(char *pwd, vector<bitset<Des::BLOCK_SIZE>> &keyList) {
 	unsigned char *cipherKey = new unsigned char[KEY_SIZE];
 
@@ -193,7 +253,7 @@ int getKeys(char *pwd, vector<bitset<Des::BLOCK_SIZE>> &keyList) {
 		return -1;
 	}
 
-	// Convert character array key into binary key
+	// Get key in binary
 	bitset<192> key = chararr2bin<192>(cipherKey);
 
 	// Split key into 3 parts
@@ -212,6 +272,11 @@ int getKeys(char *pwd, vector<bitset<Des::BLOCK_SIZE>> &keyList) {
 	return 0;
 }
 
+/*
+ * Splits user message into a vector of 64-bit binary strings
+ * Returns a vector of bitsets
+ * @message: the string to split and foramt
+ */
 vector<bitset<Des::BLOCK_SIZE>> formatMessage(string message) {
 	string temp;
 	int numPadB = 0;
@@ -219,10 +284,11 @@ vector<bitset<Des::BLOCK_SIZE>> formatMessage(string message) {
 	
 	vector<bitset<Des::BLOCK_SIZE>> messageList;
 	for(size_t i=0; i<message.size(); i+=8) {
+		// Split and encode 8 characters at a time
 		temp = message.substr(i, 8);
 		bitString = string2bin<64>(temp);
 
-		// Pad with whole bytes
+		// Pad with whole bytes if necessary
 		if(temp.length() < 8) {
 			numPadB = 8-temp.length();
 			
@@ -236,31 +302,39 @@ vector<bitset<Des::BLOCK_SIZE>> formatMessage(string message) {
 	return messageList;
 }
 
-
+/*
+ * Encrypt the message given password and chain mode; stores resulting ciphers in passed in vector
+ * Returns 0 on success, -1 on failure
+ * @message: user message to encrypt
+ * @password: password to convert to key
+ * @choice: chain mode to use
+ * @cipherList: vector to store resulting ciphers
+ */
 int encrypt(string message, string password, string choice, vector<bitset<Des::BLOCK_SIZE>> &cipherList) {
-	
-	// Get key
-	char* pwd = &password[0];
 	int status = 0;
+
+	// Derive 3DES keys from password
+	char* pwd = &password[0];
 	vector<bitset<Des::BLOCK_SIZE>> keyList;
 	status = getKeys(pwd, keyList);
 	if(status == -1) {
 		cout << "Failed to get cipher key." << endl;
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
+	// Split messages into 64-bit blocks
 	vector<bitset<Des::BLOCK_SIZE>> messageList;
 	messageList = formatMessage(message);
 
-	// Generate iv
+	// Generate iv; convert it to 64-bit bitset
 	unsigned char *temp_iv = new unsigned char[8];
 	if (!RAND_bytes(temp_iv, 8)) {
 		cout << "Error generating IV for encryption." << endl;
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 	bitset<64> iv = chararr2bin<64>(temp_iv);
 
-	// Encrypt
+	// Encrypt based on chain mode
 	if(choice == "ecb") {
 		cipherList = ECB_E(keyList, messageList);
 	} else if(choice == "cbc") {
@@ -268,8 +342,8 @@ int encrypt(string message, string password, string choice, vector<bitset<Des::B
 	} else if(choice == "ofb") {
 		cipherList = OFB_E(keyList, messageList, iv);
 	} else {
-		cout << "invalid option" << endl;
-		exit(EXIT_FAILURE);
+		cout << "Invalid chain mode." << endl;
+		return -1;
 	}
 
 	// Insert IV at the start of cipherlist
@@ -278,10 +352,19 @@ int encrypt(string message, string password, string choice, vector<bitset<Des::B
 	return 0;
 }
 
+/*
+ * Decrypt the message given password and chain mode; stores resulting messages in passed in vector
+ * Returns 0 on success, -1 on failure
+ * @cipherList: ciphers to decrypt
+ * @password: password to convert to key
+ * @choice: chain mode to use
+ * @resList: vector to store resulting messages
+ */
 int decrypt(vector<bitset<Des::BLOCK_SIZE>> cipherList, string password, string choice, vector<string> &resList) {
-	// Get key
-	char* pwd = &password[0];
 	int status = 0;
+
+	// Derive 3DES keys from password
+	char* pwd = &password[0];
 	vector<bitset<Des::BLOCK_SIZE>> keyList;
 	status = getKeys(pwd, keyList);
 	if(status == -1) {
@@ -318,13 +401,11 @@ int main() {
 	transform(choice.begin(), choice.end(), choice.begin(), ::tolower);
 
 	// Get password
-	cout << "type password: ";
+	cout << "Enter password: ";
 	string mypass;
 	getline(cin, mypass);
 	char* pwd = &mypass[0];
 
-	string message;
-	vector<bitset<Des::BLOCK_SIZE>> messageList;
 	if(choice == "encrypt")	 {
 
 		cout << "Select ECB, CBC, or OFB: ";
@@ -337,17 +418,18 @@ int main() {
 		cin >> fileName;
 		cin.ignore();
 
-		// Get message
-		cout << "type msg: ";
+		string message;
+		cout << "Enter message: ";
 		getline(cin, message);
 
-		
 		vector<bitset<Des::BLOCK_SIZE>> cipherList;
-		encrypt(message, mypass, choice, cipherList);
+		status = encrypt(message, mypass, choice, cipherList);
+		if(status == -1) {
+			exit(EXIT_FAILURE);
+		}
 
 		// Write output to binary file
 		unsigned long n = 0;
-		cout << "Writing binary file..." << endl;
 		ofstream file_o(fileName, ios::binary);
 		
 		// Write iv + ciphers
@@ -371,7 +453,6 @@ int main() {
 
 		// Get cipher from binary file
 		unsigned long n = 0;
-		cout << "Reading binary file..." << endl;
 		vector<bitset<Des::BLOCK_SIZE>> cipherList;
 		ifstream file_i (fileName, ios::binary);
 		if(file_i.is_open()){
@@ -396,11 +477,12 @@ int main() {
 		cipherList.pop_back();
 
 		vector<string> resList;
-		decrypt(cipherList, mypass, choice, resList);
+		status = decrypt(cipherList, mypass, choice, resList);
+		if(status == -1) {
+			exit(EXIT_FAILURE);
+		}
 
-
-		
-
+		cout << "Decrypted string: ";
 		for(auto it : resList) {
 			cout << it;
 		}

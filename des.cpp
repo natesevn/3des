@@ -123,19 +123,35 @@ const size_t BLOCK_SIZE = 64;
 const size_t SBOX_ROW = 2;
 const size_t SBOX_COL = 4;
 
-// Helper function since Bitset accesses elements from the right
+/*
+ * Reverses array index to access Bitset elements in order
+ * Returns reversed index
+ * @size: size of array
+ * @index: index to reverse
+ */
 constexpr int reverseNum(int size, int index) {
 	return size - index - 1;
 }
 
-// Circular left shift 
+/*
+ * Circular left shift bitset
+ * Returns shifted bitset
+ * @b: bitset to shift
+ * @m: number of circular shifts
+ */
 template <size_t N>
 constexpr bitset<N> rotate(bitset<N> b, unsigned m){
 	b = b << m | b >> (N-m);
 	return b;
 }
 
-// Concatenate 2 bitsets into 1; https://stackoverflow.com/questions/3061721/concatenate-boostdynamic-bitset-or-stdbitset
+/*
+ * Concatenates 2 bitsets into 1
+ * Returns concatenated bitset
+ * @b1: left half
+ * @b2: right half
+ * taken from: https://stackoverflow.com/questions/3061721/concatenate-boostdynamic-bitset-or-stdbitset
+ */
 template <size_t N1, size_t N2 >
 constexpr bitset <N1 + N2> concat( const bitset <N1> & b1, const bitset <N2> & b2 ) {
     string s1 = b1.to_string();
@@ -154,15 +170,14 @@ vector<bitset<SUB_KEY_SIZE>> Des::keygen(const bitset<INIT_KEY_SIZE> initkey) {
 	// Initial key permutation
 	for(int i=0; i<HALF_KEY_SIZE*2; i++) {
 
-		// Get left half i.e. c0
+		// Get left half of subkey i.e. c0
 		if(i < HALF_KEY_SIZE) {
-			// Add 1 because pc1 uses 1-indexing
 			if(initkey.test(reverseNum(INIT_KEY_SIZE, pc1[i]) + 1)) {
 				c0.set(reverseNum(HALF_KEY_SIZE, c));
 			}
 			c++;
 
-		// Get right half i.e. d0	
+		// Get right half of subkey i.e. d0	
 		} else {
 			if(initkey.test(reverseNum(INIT_KEY_SIZE, pc1[i]) + 1)) {
 				d0.set(reverseNum(HALF_KEY_SIZE, d));
@@ -175,11 +190,14 @@ vector<bitset<SUB_KEY_SIZE>> Des::keygen(const bitset<INIT_KEY_SIZE> initkey) {
 	bitset<SUB_KEY_SIZE> p2Key;
 	int p = 0;
 
-	// Creating 16 round keys
+	// Create 16 round keys
 	for(int i=0; i<NUM_ROUNDS; i++) {
+
+		// Circular left shift based on round number
 		c0 = rotate(c0, lShift[i]);
 		d0 = rotate(d0, lShift[i]);
 
+		// Combine left and right halves
 		tempKey = concat(c0, d0);
 		
 		// Permutation to get final 48-bit subkey
@@ -204,15 +222,14 @@ int Des::initPerm(const bitset<BLOCK_SIZE> msg, bitset<BLOCK_SIZE/2>* l0, bitset
 
 	for(int i=0; i<BLOCK_SIZE; i++) {
 
-		// Get left half i.e. l0
+		// Permute left half i.e. l0
 		if(i < BLOCK_SIZE/2) {
-			// Add 1 because pc1 uses 1-indexing
 			if(msg.test(reverseNum(BLOCK_SIZE, initP[i]) + 1)) {
 				l0->set(reverseNum(BLOCK_SIZE/2, l));
 			}
 			l++;
 
-		// Get right half i.e. r0	
+		// Permute right half i.e. r0	
 		} else {
 			if(msg.test(reverseNum(BLOCK_SIZE, initP[i]) + 1)) {
 				r0->set(reverseNum(BLOCK_SIZE/2, r));
@@ -308,8 +325,7 @@ bitset<BLOCK_SIZE/2> Des::roundFunction(const bitset<BLOCK_SIZE/2> rn, const bit
 			pR.set(reverseNum(BLOCK_SIZE/2, p));
 		}
 		p++;
-	}
-	
+	}	
 
 	return pR;
 }
@@ -354,56 +370,3 @@ int Des::des(const string op, const bitset<BLOCK_SIZE> key, const bitset<BLOCK_S
 
 	return 0;
 }
-
-//1111000011001100101010101111
-//0101010101100110011110001111
-
-/*
-000110110000001011101111111111000111000001110010
-011110011010111011011001110110111100100111100101
-010101011111110010001010010000101100111110011001
-011100101010110111010110110110110011010100011101
-011111001110110000000111111010110101001110101000
-011000111010010100111110010100000111101100101111
-111011001000010010110111111101100001100010111100
-111101111000101000111010110000010011101111111011
-111000001101101111101011111011011110011110000001
-101100011111001101000111101110100100011001001111
-001000010101111111010011110111101101001110000110
-011101010111000111110101100101000110011111101001
-100101111100010111010001111110101011101001000001
-010111110100001110110111111100101110011100111010
-101111111001000110001101001111010011111100001010
-110010110011110110001011000011100001011111110101
-*/
-
-/* messages
-IP
-L0 = 11001100000000001100110011111111 
-R0 = 11110000101010101111000010101010
-
-expanded R0 = 011110100001010101010101011110100001010101010101
-
-xor'd R0 =  011000010001011110111010100001100110010100100111
-
-r0 6 bits = 
-011000
-010001
-011110
-111010
-100001
-100110
-010100
-100111
-
-r0 sbox output = 01011100100000101011010110010111
-
-r0 round permutation = 00100011010010101010100110111011
-
-r1 = 11101111010010100110010101000100
-
-l16 = 01000011010000100011001000110100
-r16 = 00001010010011001101100110010101
-
-final = 1000010111101000000100110101010000001111000010101011010000000101
-*/
