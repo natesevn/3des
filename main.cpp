@@ -237,6 +237,77 @@ vector<bitset<Des::BLOCK_SIZE>> formatMessage(string message) {
 }
 
 
+int encrypt(string message, string password, string choice, vector<bitset<Des::BLOCK_SIZE>> &cipherList) {
+	
+	// Get key
+	char* pwd = &password[0];
+	int status = 0;
+	vector<bitset<Des::BLOCK_SIZE>> keyList;
+	status = getKeys(pwd, keyList);
+	if(status == -1) {
+		cout << "Failed to get cipher key." << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	vector<bitset<Des::BLOCK_SIZE>> messageList;
+	messageList = formatMessage(message);
+
+	// Generate iv
+	unsigned char *temp_iv = new unsigned char[8];
+	if (!RAND_bytes(temp_iv, 8)) {
+		cout << "Error generating IV for encryption." << endl;
+		exit(EXIT_FAILURE);
+	}
+	bitset<64> iv = chararr2bin<64>(temp_iv);
+
+	// Encrypt
+	if(choice == "ecb") {
+		cipherList = ECB_E(keyList, messageList);
+	} else if(choice == "cbc") {
+		cipherList = CBC_E(keyList, messageList, iv);
+	} else if(choice == "ofb") {
+		cipherList = OFB_E(keyList, messageList, iv);
+	} else {
+		cout << "invalid option" << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	// Insert IV at the start of cipherlist
+	auto it = cipherList.insert(cipherList.begin(), 1, iv);
+
+	return 0;
+}
+
+int decrypt(vector<bitset<Des::BLOCK_SIZE>> cipherList, string password, string choice, vector<string> &resList) {
+	// Get key
+	char* pwd = &password[0];
+	int status = 0;
+	vector<bitset<Des::BLOCK_SIZE>> keyList;
+	status = getKeys(pwd, keyList);
+	if(status == -1) {
+		cout << "Failed to get cipher key." << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	// Get iv; iv is first line read from file
+	bitset<Des::BLOCK_SIZE> iv = cipherList.front();
+	cipherList.erase(cipherList.begin());
+
+	// Decrypt 
+	if(choice == "ecb") {
+		resList = ECB_D(keyList, cipherList);
+	} else if(choice == "cbc") {
+		resList = CBC_D(keyList, cipherList, iv);
+	} else if(choice == "ofb") {
+		resList = OFB_D(keyList, cipherList, iv);
+	} else {
+		cout << "invalid option" << endl;
+		exit(EXIT_FAILURE);
+	}
+
+	return 0;
+}
+
 int main() {
 	int status = 0;
 
@@ -251,14 +322,6 @@ int main() {
 	string mypass;
 	getline(cin, mypass);
 	char* pwd = &mypass[0];
-
-	// Get key
-	vector<bitset<Des::BLOCK_SIZE>> keyList;
-	status = getKeys(pwd, keyList);
-	if(status == -1) {
-		cout << "Failed to get cipher key." << endl;
-		exit(EXIT_FAILURE);
-	}
 
 	string message;
 	vector<bitset<Des::BLOCK_SIZE>> messageList;
@@ -278,40 +341,16 @@ int main() {
 		cout << "type msg: ";
 		getline(cin, message);
 
-		// Split and pad message
-		messageList = formatMessage(message);
-
-		// Generate iv
-		unsigned char *temp_iv = new unsigned char[8];
-		if (!RAND_bytes(temp_iv, 8)) {
-			cout << "Error generating IV for encryption." << endl;
-			exit(EXIT_FAILURE);
-		}
-		bitset<64> iv = chararr2bin<64>(temp_iv);
-
-		// Encrypt
+		
 		vector<bitset<Des::BLOCK_SIZE>> cipherList;
-		if(choice == "ecb") {
-			cipherList = ECB_E(keyList, messageList);
-		} else if(choice == "cbc") {
-			cipherList = CBC_E(keyList, messageList, iv);
-		} else if(choice == "ofb") {
-			cipherList = OFB_E(keyList, messageList, iv);
-		} else {
-			cout << "invalid option" << endl;
-			exit(EXIT_FAILURE);
-		}
+		encrypt(message, mypass, choice, cipherList);
 
 		// Write output to binary file
 		unsigned long n = 0;
 		cout << "Writing binary file..." << endl;
 		ofstream file_o(fileName, ios::binary);
 		
-		// Write iv first
-		n = iv.to_ulong();
-		file_o.write(reinterpret_cast<const char *>(&n), sizeof(n));
-
-		// Write rest of cipher
+		// Write iv + ciphers
 		for (auto it : cipherList){
 			n = it.to_ulong();
 			file_o.write(reinterpret_cast<const char *>(&n), sizeof(n));
@@ -356,22 +395,11 @@ int main() {
 		// File IO always reads an extra element; get rid of it
 		cipherList.pop_back();
 
-		// Get iv; iv is first line read from file
-		bitset<Des::BLOCK_SIZE> iv = cipherList.front();
-		cipherList.erase(cipherList.begin());
-
-		// Decrypt 
 		vector<string> resList;
-		if(choice == "ecb") {
-			resList = ECB_D(keyList, cipherList);
-		} else if(choice == "cbc") {
-			resList = CBC_D(keyList, cipherList, iv);
-		} else if(choice == "ofb") {
-			resList = OFB_D(keyList, cipherList, iv);
-		} else {
-			cout << "invalid option" << endl;
-			exit(EXIT_FAILURE);
-		}
+		decrypt(cipherList, mypass, choice, resList);
+
+
+		
 
 		for(auto it : resList) {
 			cout << it;
